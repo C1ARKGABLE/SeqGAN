@@ -1,5 +1,7 @@
 # SeqGAN
 
+### Currently working on this SeqGAN for a class project. The original README.md is below:
+
 ## Requirements: 
 * **Tensorflow r1.0.1**
 * Python 2.7
