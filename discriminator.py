@@ -4,7 +4,7 @@ import numpy as np
 # An alternative to tf.nn.rnn_cell._linear function, which has been removed in Tensorfow 1.0.1
 # The highway layer is borrowed from https://github.com/mkroutikov/tf-lstm-char-cnn
 def linear(input_, output_size, scope=None):
-    '''
+    """
     Linear map: output[k] = sum_i(Matrix[k, i] * input_[i] ) + Bias[k]
     Args:
     input_: a tensor or a list of 2D, batch x n, Tensors.
@@ -15,7 +15,7 @@ def linear(input_, output_size, scope=None):
     sum_i(input_[i] * W[i]), where W[i]s are newly created matrices.
   Raises:
     ValueError: if some of the arguments has unspecified or wrong shape.
-  '''
+  """
 
     shape = input_.get_shape().as_list()
     if len(shape) != 2:
@@ -26,12 +26,15 @@ def linear(input_, output_size, scope=None):
 
     # Now the computation.
     with tf.variable_scope(scope or "SimpleLinear"):
-        matrix = tf.get_variable("Matrix", [output_size, input_size], dtype=input_.dtype)
+        matrix = tf.get_variable(
+            "Matrix", [output_size, input_size], dtype=input_.dtype
+        )
         bias_term = tf.get_variable("Bias", [output_size], dtype=input_.dtype)
 
     return tf.matmul(input_, tf.transpose(matrix)) + bias_term
 
-def highway(input_, size, num_layers=1, bias=-2.0, f=tf.nn.relu, scope='Highway'):
+
+def highway(input_, size, num_layers=1, bias=-2.0, f=tf.nn.relu, scope="Highway"):
     """Highway Network (cf. http://arxiv.org/abs/1505.00387).
     t = sigmoid(Wy + b)
     z = t * g(Wy + b) + (1 - t) * y
@@ -40,14 +43,15 @@ def highway(input_, size, num_layers=1, bias=-2.0, f=tf.nn.relu, scope='Highway'
 
     with tf.variable_scope(scope):
         for idx in range(num_layers):
-            g = f(linear(input_, size, scope='highway_lin_%d' % idx))
+            g = f(linear(input_, size, scope="highway_lin_%d" % idx))
 
-            t = tf.sigmoid(linear(input_, size, scope='highway_gate_%d' % idx) + bias)
+            t = tf.sigmoid(linear(input_, size, scope="highway_gate_%d" % idx) + bias)
 
-            output = t * g + (1. - t) * input_
+            output = t * g + (1.0 - t) * input_
             input_ = output
 
     return output
+
 
 class Discriminator(object):
     """
@@ -56,8 +60,15 @@ class Discriminator(object):
     """
 
     def __init__(
-            self, sequence_length, num_classes, vocab_size,
-            embedding_size, filter_sizes, num_filters, l2_reg_lambda=0.0):
+        self,
+        sequence_length,
+        num_classes,
+        vocab_size,
+        embedding_size,
+        filter_sizes,
+        num_filters,
+        l2_reg_lambda=0.0,
+    ):
         # Placeholders for input, output and dropout
         self.input_x = tf.placeholder(tf.int32, [None, sequence_length], name="input_x")
         self.input_y = tf.placeholder(tf.float32, [None, num_classes], name="input_y")
@@ -65,14 +76,14 @@ class Discriminator(object):
 
         # Keeping track of l2 regularization loss (optional)
         l2_loss = tf.constant(0.0)
-        
-        with tf.variable_scope('discriminator'):
+
+        with tf.variable_scope("discriminator"):
 
             # Embedding layer
-            with tf.device('/cpu:0'), tf.name_scope("embedding"):
+            with tf.device("/cpu:0"), tf.name_scope("embedding"):
                 self.W = tf.Variable(
-                    tf.random_uniform([vocab_size, embedding_size], -1.0, 1.0),
-                    name="W")
+                    tf.random_uniform([vocab_size, embedding_size], -1.0, 1.0), name="W"
+                )
                 self.embedded_chars = tf.nn.embedding_lookup(self.W, self.input_x)
                 self.embedded_chars_expanded = tf.expand_dims(self.embedded_chars, -1)
 
@@ -82,14 +93,17 @@ class Discriminator(object):
                 with tf.name_scope("conv-maxpool-%s" % filter_size):
                     # Convolution Layer
                     filter_shape = [filter_size, embedding_size, 1, num_filter]
-                    W = tf.Variable(tf.truncated_normal(filter_shape, stddev=0.1), name="W")
+                    W = tf.Variable(
+                        tf.truncated_normal(filter_shape, stddev=0.1), name="W"
+                    )
                     b = tf.Variable(tf.constant(0.1, shape=[num_filter]), name="b")
                     conv = tf.nn.conv2d(
                         self.embedded_chars_expanded,
                         W,
                         strides=[1, 1, 1, 1],
                         padding="VALID",
-                        name="conv")
+                        name="conv",
+                    )
                     # Apply nonlinearity
                     h = tf.nn.relu(tf.nn.bias_add(conv, b), name="relu")
                     # Maxpooling over the outputs
@@ -97,10 +111,11 @@ class Discriminator(object):
                         h,
                         ksize=[1, sequence_length - filter_size + 1, 1, 1],
                         strides=[1, 1, 1, 1],
-                        padding='VALID',
-                        name="pool")
+                        padding="VALID",
+                        name="pool",
+                    )
                     pooled_outputs.append(pooled)
-            
+
             # Combine all the pooled features
             num_filters_total = sum(num_filters)
             self.h_pool = tf.concat(pooled_outputs, 3)
@@ -108,7 +123,9 @@ class Discriminator(object):
 
             # Add highway
             with tf.name_scope("highway"):
-                self.h_highway = highway(self.h_pool_flat, self.h_pool_flat.get_shape()[1], 1, 0)
+                self.h_highway = highway(
+                    self.h_pool_flat, self.h_pool_flat.get_shape()[1], 1, 0
+                )
 
             # Add dropout
             with tf.name_scope("dropout"):
@@ -116,7 +133,10 @@ class Discriminator(object):
 
             # Final (unnormalized) scores and predictions
             with tf.name_scope("output"):
-                W = tf.Variable(tf.truncated_normal([num_filters_total, num_classes], stddev=0.1), name="W")
+                W = tf.Variable(
+                    tf.truncated_normal([num_filters_total, num_classes], stddev=0.1),
+                    name="W",
+                )
                 b = tf.Variable(tf.constant(0.1, shape=[num_classes]), name="b")
                 l2_loss += tf.nn.l2_loss(W)
                 l2_loss += tf.nn.l2_loss(b)
@@ -126,10 +146,16 @@ class Discriminator(object):
 
             # CalculateMean cross-entropy loss
             with tf.name_scope("loss"):
-                losses = tf.nn.softmax_cross_entropy_with_logits(logits=self.scores, labels=self.input_y)
+                losses = tf.nn.softmax_cross_entropy_with_logits(
+                    logits=self.scores, labels=self.input_y
+                )
                 self.loss = tf.reduce_mean(losses) + l2_reg_lambda * l2_loss
 
-        self.params = [param for param in tf.trainable_variables() if 'discriminator' in param.name]
+        self.params = [
+            param for param in tf.trainable_variables() if "discriminator" in param.name
+        ]
         d_optimizer = tf.train.AdamOptimizer(1e-4)
-        grads_and_vars = d_optimizer.compute_gradients(self.loss, self.params, aggregation_method=2)
+        grads_and_vars = d_optimizer.compute_gradients(
+            self.loss, self.params, aggregation_method=2
+        )
         self.train_op = d_optimizer.apply_gradients(grads_and_vars)

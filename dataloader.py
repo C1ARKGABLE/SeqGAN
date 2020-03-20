@@ -1,14 +1,14 @@
 import numpy as np
 
 
-class Gen_Data_loader():
+class Gen_Data_loader:
     def __init__(self, batch_size):
         self.batch_size = batch_size
         self.token_stream = []
 
     def create_batches(self, data_file):
         self.token_stream = []
-        with open(data_file, 'r') as f:
+        with open(data_file, "r") as f:
             for line in f:
                 line = line.strip()
                 line = line.split()
@@ -17,7 +17,7 @@ class Gen_Data_loader():
                     self.token_stream.append(parse_line)
 
         self.num_batch = int(len(self.token_stream) / self.batch_size)
-        self.token_stream = self.token_stream[:self.num_batch * self.batch_size]
+        self.token_stream = self.token_stream[: self.num_batch * self.batch_size]
         self.sequence_batch = np.split(np.array(self.token_stream), self.num_batch, 0)
         self.pointer = 0
 
@@ -30,7 +30,7 @@ class Gen_Data_loader():
         self.pointer = 0
 
 
-class Dis_dataloader():
+class Dis_dataloader:
     def __init__(self, batch_size):
         self.batch_size = batch_size
         self.sentences = np.array([])
@@ -40,13 +40,13 @@ class Dis_dataloader():
         # Load data
         positive_examples = []
         negative_examples = []
-        with open(positive_file)as fin:
+        with open(positive_file) as fin:
             for line in fin:
                 line = line.strip()
                 line = line.split()
                 parse_line = [int(x) for x in line]
                 positive_examples.append(parse_line)
-        with open(negative_file)as fin:
+        with open(negative_file) as fin:
             for line in fin:
                 line = line.strip()
                 line = line.split()
@@ -67,13 +67,12 @@ class Dis_dataloader():
 
         # Split batches
         self.num_batch = int(len(self.labels) / self.batch_size)
-        self.sentences = self.sentences[:self.num_batch * self.batch_size]
-        self.labels = self.labels[:self.num_batch * self.batch_size]
+        self.sentences = self.sentences[: self.num_batch * self.batch_size]
+        self.labels = self.labels[: self.num_batch * self.batch_size]
         self.sentences_batches = np.split(self.sentences, self.num_batch, 0)
         self.labels_batches = np.split(self.labels, self.num_batch, 0)
 
         self.pointer = 0
-
 
     def next_batch(self):
         ret = self.sentences_batches[self.pointer], self.labels_batches[self.pointer]
@@ -82,4 +81,3 @@ class Dis_dataloader():
 
     def reset_pointer(self):
         self.pointer = 0
-
